@@ -22,6 +22,7 @@ class Posts(tornado.web.RequestHandler):
         """ render posts list page (10 by page) """
         page = self.get_argument("page", 1)
         offset = (page - 1) * 10
+        self.render("posts.html")
         raise NotImplementedYet()
 
     def post(self):
