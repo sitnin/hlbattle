@@ -9,7 +9,6 @@ import threading
 from redis import Redis
 from urllib import unquote
 from time import sleep
-import tornado.database
 
 
 class Home(tornado.web.RequestHandler):
