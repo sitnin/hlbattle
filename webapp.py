@@ -79,7 +79,8 @@ application = tornado.web.Application([
     (r"/tags", Tags),
     (r"/tags/(\d+)", OneTag),
     (r"/search/(.+)", Search),
-], debug=config.debug)
+], debug=config.debug, template_path=os.path.join(os.path.dirname(__file__), 'templates'))
+
 
 if __name__ == "__main__":
     R = Redis(config.db_host)
