@@ -6,24 +6,21 @@ import config
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-import threading
 from redis import Redis
 from urllib import unquote
-from time import sleep
-
-
-class Home(tornado.web.RequestHandler):
-    def get(self):
-        """ redirect to the /posts """
-        self.redirect("/posts", 301)
 
 
 class Posts(tornado.web.RequestHandler):
-    def get(self):
+    def get(self, page=None):
         """ render posts list page (10 by page) """
-        page = self.get_argument("page", 1)
+        if page is None:
+            page = 1
+        else:
+            page = int(page)
+        if page < 1:
+            raise tornado.web.HTTPError(404)
         offset = (page - 1) * 10
-        self.render("posts.html")
+        self.render("posts.html", page=page, url=self.request.uri)
 
     def post(self):
         """ save new post """
@@ -35,7 +32,7 @@ class Posts(tornado.web.RequestHandler):
 
 class OnePost(tornado.web.RequestHandler):
     def get(self, id):
-        """ render one post """
+        """ render one post with comments tree"""
         raise NotImplementedYet()
 
 
@@ -72,12 +69,13 @@ class NotImplementedYet(Exception):
 
 
 application = tornado.web.Application([
-    (r"/", Home),
-    (r"/posts", Posts),
-    (r"/posts/(\d+)", OnePost),
-    (r"/posts/(\d+)/comments", PostComments),
+    ("/posts", Posts),
+    ("/", Posts),
+    (r"/posts/page/([0-9]+)", Posts),
+    (r"/posts/([0-9]+)", OnePost),
+    (r"/posts/([0-9]+)/comments", PostComments),
     (r"/tags", Tags),
-    (r"/tags/(\d+)", OneTag),
+    (r"/tags/([0-9]+)", OneTag),
     (r"/search/(.+)", Search),
 ], debug=config.debug, template_path=os.path.join(os.path.dirname(__file__), 'templates'))
 
