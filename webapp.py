@@ -25,14 +25,30 @@ class Posts(tornado.web.RequestHandler):
         if page < 1:
             raise tornado.web.HTTPError(404)
         offset = (page - 1) * 10
-        self.render("posts.html", page=page, url=self.request.uri)
+
+        while True:
+            try:
+                R.send_command("WATCH last_post_id")
+                R.send_command("MULTI")
+                post_id = R.incr("last_post_id")
+                R.send_command("EXEC")
+                break
+            except Exception, e:
+                print(str(e))
+        self.write(str(post_id))
+
+        # self.redirect("")
+        # self.render("posts.html", page=page, url=self.request.uri)
 
     def post(self):
         """ save new post """
         title = self.get_argument("title")
         body = self.get_argument("body")
         tags = self.get_argument("tags")
-        raise NotImplementedYet()
+        post_id = R.incr("last_post_id")
+        self.write(str(post_id))
+        # self.redirect("")
+        # raise NotImplementedYet()
 
 
 class OnePost(tornado.web.RequestHandler):
