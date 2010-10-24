@@ -13,6 +13,9 @@ import tornado.ioloop
 import tornado.web
 from redis import Redis
 from urllib import unquote
+from pprint import pformat
+import string
+from operator import itemgetter
 
 
 class Posts(tornado.web.RequestHandler):
@@ -25,30 +28,55 @@ class Posts(tornado.web.RequestHandler):
         if page < 1:
             raise tornado.web.HTTPError(404)
         offset = (page - 1) * 10
-
-        while True:
-            try:
-                R.send_command("WATCH last_post_id")
-                R.send_command("MULTI")
-                post_id = R.incr("last_post_id")
-                R.send_command("EXEC")
-                break
-            except Exception, e:
-                print(str(e))
-        self.write(str(post_id))
-
-        # self.redirect("")
-        # self.render("posts.html", page=page, url=self.request.uri)
+        self.write("Hello, world!")
 
     def post(self):
+        def map(text):
+            res = list()
+            for line in text.splitlines():
+                line = line.strip()
+                words = line.split()
+                for word in words:
+                    res.append([unicode(word.strip(string.punctuation+string.whitespace+"«»…".decode("utf-8")).lower()), 1])
+            return res
+
+        def reduce(mapped_words, post_id):
+            word2count = {}
+            for word, count in mapped_words:
+                if len(word) > 2:
+                    try:
+                        word2count[word] = word2count.get(word, 0) + count
+                    except ValueError:
+                        pass
+ 
+            sorted_word2count = sorted(word2count.items(), key=itemgetter(0))
+            for word, count in sorted_word2count:
+                key = "idx:posts:%s"%word
+                l = R.llen(key)
+                idx = R.lrange(key, 0, l-1)
+                if not post_id in idx:
+                    R.rpush(key, post_id)
+
         """ save new post """
         title = self.get_argument("title")
         body = self.get_argument("body")
         tags = self.get_argument("tags")
-        post_id = R.incr("last_post_id")
+
+        while True:
+            try:
+                post_id = R.incr("last_post_id")
+                if not post_id:
+                    raise Exception("not an ID")
+                break
+            except Exception, e:
+                pass
+        
+        R.set("post:%d:title"%post_id, title)
+        R.set("post:%d:body"%post_id, body)
+        R.set("post:%d:tags"%post_id, tags)
+        reduce(map(title+" "+body), post_id)
         self.write(str(post_id))
         # self.redirect("")
-        # raise NotImplementedYet()
 
 
 class OnePost(tornado.web.RequestHandler):

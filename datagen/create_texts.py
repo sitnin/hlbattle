@@ -12,7 +12,7 @@ import urllib
 from BeautifulSoup import BeautifulSoup
 
 
-count = 100
+count = 1000
 base_url = "http://vesna.yandex.ru/all.xml"
 themes = (
     "astronomy","geology","gyroscope","literature","marketing",
