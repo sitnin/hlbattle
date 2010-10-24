@@ -1,0 +1,11 @@
+{% extends "master.html" %}
+
+{% block title %}Post {{id}}, HLBattle{% end %}
+
+{% block body %}
+    <h1>{{title}}</h1>
+    <div class="post">
+        <div class="body">{{nl2br(body)}}</div>
+        <div class="tags">Tags: {{tags}}</div>
+    </div>
+{% end %}

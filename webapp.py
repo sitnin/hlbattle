@@ -47,10 +47,6 @@ def reduce(mapped_words, index, what="posts"):
 class Posts(tornado.web.RequestHandler):
     def get(self, page=None):
         """ render posts list page (10 by page) """
-
-        def nl2br(str):
-            return str.replace("\n", "<br>")
-
         if page is None:
             page = 1
         else:
@@ -76,12 +72,12 @@ class Posts(tornado.web.RequestHandler):
                 tags = R.get(key_base+"tags")
                 if title:
                     posts.append({
-                        "id": x,
+                        "id": x+1,
                         "title": title,
                         "body": body,
                         "tags": tags,
                     })
-            self.render("posts.html", nl2br=nl2br, page=page, items=posts, last_page=last_page)
+            self.render("posts.html", page=page, items=posts, last_page=last_page)
         else:
             self.write("There is no posts")
 
@@ -110,7 +106,18 @@ class Posts(tornado.web.RequestHandler):
 class OnePost(tornado.web.RequestHandler):
     def get(self, id):
         """ render one post with comments tree"""
-        raise NotImplementedYet()
+
+        def nl2br(str):
+            return str.replace("\n", "<br>")
+
+        post_id = int(id)
+        title = R.get("post:%d:title"%post_id)
+        if not title:
+            raise tornado.web.HTTPError(404, "File Not Found")
+        body = R.get("post:%d:body"%post_id)
+        tags = R.get("post:%d:tags"%post_id)
+        comments = list()
+        self.render("one_post.html", nl2br=nl2br, id=post_id, title=title, body=body, tags=tags, comments=comments)
 
 
 class Tags(tornado.web.RequestHandler):
