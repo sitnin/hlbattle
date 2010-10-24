@@ -62,7 +62,7 @@ def run(count, data, target_host="188.127.230.23"):
             "tags": tags,
             "data": resp_data,
         })
-        if x%(count/10) == 0:
+        if (x+1)%(count/10) == 0:
             print x
     end = datetime.datetime.now()
     return (start, end, log)
