@@ -17,10 +17,40 @@ from pprint import pformat
 import string
 from operator import itemgetter
 
+def map(text):
+    res = list()
+    for line in text.splitlines():
+        line = line.strip()
+        words = line.split()
+        for word in words:
+            res.append([unicode(word.strip(string.punctuation+string.whitespace+"«»…".decode("utf-8")).lower()), 1])
+    return res
+
+def reduce(mapped_words, index, what="posts"):
+    word2count = {}
+    for word, count in mapped_words:
+        if len(word) > 2:
+            try:
+                word2count[word] = word2count.get(word, 0) + count
+            except ValueError:
+                pass
+
+    sorted_word2count = sorted(word2count.items(), key=itemgetter(0))
+    for word, count in sorted_word2count:
+        key = "idx:%s:%s"%(word, what)
+        l = R.llen(key)
+        idx = R.lrange(key, 0, l-1)
+        if not index in idx:
+            R.rpush(key, index)
+
 
 class Posts(tornado.web.RequestHandler):
     def get(self, page=None):
         """ render posts list page (10 by page) """
+
+        def nl2br(str):
+            return str.replace("\n", "<br>")
+
         if page is None:
             page = 1
         else:
@@ -28,35 +58,34 @@ class Posts(tornado.web.RequestHandler):
         if page < 1:
             raise tornado.web.HTTPError(404)
         offset = (page - 1) * 10
-        self.write("Hello, world!")
+        posts = list()
+        last_id = R.get("last_post_id")
+        if last_id:
+            last_id = int(last_id)
+
+            last_page = last_id/10
+            if last_id%10 > 0:
+                last_page += 1
+            if page > last_page:
+                raise tornado.web.HTTPError(404, "File Not Found")
+
+            for x in xrange(offset, offset + 10):
+                key_base = "post:%d:"%(x+1)
+                title = R.get(key_base+"title")
+                body = R.get(key_base+"body")
+                tags = R.get(key_base+"tags")
+                if title:
+                    posts.append({
+                        "id": x,
+                        "title": title,
+                        "body": body,
+                        "tags": tags,
+                    })
+            self.render("posts.html", nl2br=nl2br, page=page, items=posts, last_page=last_page)
+        else:
+            self.write("There is no posts")
 
     def post(self):
-        def map(text):
-            res = list()
-            for line in text.splitlines():
-                line = line.strip()
-                words = line.split()
-                for word in words:
-                    res.append([unicode(word.strip(string.punctuation+string.whitespace+"«»…".decode("utf-8")).lower()), 1])
-            return res
-
-        def reduce(mapped_words, post_id):
-            word2count = {}
-            for word, count in mapped_words:
-                if len(word) > 2:
-                    try:
-                        word2count[word] = word2count.get(word, 0) + count
-                    except ValueError:
-                        pass
- 
-            sorted_word2count = sorted(word2count.items(), key=itemgetter(0))
-            for word, count in sorted_word2count:
-                key = "idx:posts:%s"%word
-                l = R.llen(key)
-                idx = R.lrange(key, 0, l-1)
-                if not post_id in idx:
-                    R.rpush(key, post_id)
-
         """ save new post """
         title = self.get_argument("title")
         body = self.get_argument("body")
@@ -74,9 +103,8 @@ class Posts(tornado.web.RequestHandler):
         R.set("post:%d:title"%post_id, title)
         R.set("post:%d:body"%post_id, body)
         R.set("post:%d:tags"%post_id, tags)
-        reduce(map(title+" "+body), post_id)
-        self.write(str(post_id))
-        # self.redirect("")
+        reduce(map(title+"\n"+body), post_id)
+        self.redirect("/posts/%d"%post_id)
 
 
 class OnePost(tornado.web.RequestHandler):
@@ -105,12 +133,25 @@ class Search(tornado.web.RequestHandler):
 
 
 class PostComments(tornado.web.RequestHandler):
-    def post(self, id):
+    def post(self, post_id):
         """ save post comment """
         body = self.get_argument("body")
         parent_id = self.get_argument("parent_id", None)
+
+        while True:
+            try:
+                comment_id = R.incr("last_comment_id")
+                if not post_id:
+                    raise Exception("not an ID")
+                break
+            except Exception, e:
+                pass
+        
+        R.set("com:%d:post"%comment_id, post_id)
+        R.set("com:%d:parent"%comment_id, parent_id)
+        R.set("com:%d:body"%comment_id, body)
+        reduce(map(body), comment_id, "com")
         self.redirect("/posts/%d"%id)
-        raise NotImplementedYet()
 
 
 class NotImplementedYet(Exception):

@@ -32,7 +32,7 @@ def run(count, data, target_host="188.127.230.23"):
             text += s+"\n"
         tagstr = ""
         for tag in xrange(3):
-            tagstr += "tag %d, "%tag
+            tagstr += "tag %d, "%random.randint(1, 10)
         return (title, text, tagstr[:-2])
 
     start = datetime.datetime.now()
