@@ -38,10 +38,10 @@ def reduce(mapped_words, index, what="posts"):
     sorted_word2count = sorted(word2count.items(), key=itemgetter(0))
     for word, count in sorted_word2count:
         key = "idx:%s:%s"%(word, what)
-        l = R.llen(key)
-        idx = R.lrange(key, 0, l-1)
-        if not index in idx:
-            R.rpush(key, index)
+        # l = R.llen(key)
+        # idx = R.lrange(key, 0, l-1)
+        # if not index in idx:
+        R.rpush(key, index)
 
 
 class Posts(tornado.web.RequestHandler):
