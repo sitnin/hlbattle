@@ -70,7 +70,6 @@ class Posts(tornado.web.RequestHandler):
                     posts.append({
                         "id": x+1,
                         "title": title,
-                        "body": body,
                         "tags": tags,
                     })
             self.render("posts.html", page=page, items=posts, last_page=last_page)
