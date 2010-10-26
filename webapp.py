@@ -50,7 +50,6 @@ class Posts(tornado.web.RequestHandler):
             page = int(page)
         if page < 1:
             raise tornado.web.HTTPError(404)
-        offset = (page - 1) * 10
         posts = list()
         last_id = R.get("last_post_id")
         if last_id:
@@ -62,6 +61,7 @@ class Posts(tornado.web.RequestHandler):
             if page > last_page:
                 raise tornado.web.HTTPError(404, "File Not Found")
 
+            offset = last_id - ((page - 1) * 10) - 10
             for x in xrange(offset, offset + 10):
                 key_base = "post:%d:"%(x+1)
                 title = R.get(key_base+"title")
@@ -73,7 +73,7 @@ class Posts(tornado.web.RequestHandler):
                         "tags": tags,
                     })
             # self.render("posts.html", page=page, items=posts, last_page=last_page)
-            self.render("posts.html", page=page, items=posts)
+            self.render("posts.html", page=page, items=reversed(posts))
         else:
             self.write("There is no posts")
 
