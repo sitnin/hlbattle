@@ -65,7 +65,6 @@ class Posts(tornado.web.RequestHandler):
             for x in xrange(offset, offset + 10):
                 key_base = "post:%d:"%(x+1)
                 title = R.get(key_base+"title")
-                body = R.get(key_base+"body")
                 tags = R.get(key_base+"tags")
                 if title:
                     posts.append({
@@ -109,6 +108,18 @@ class Posts(tornado.web.RequestHandler):
         self.redirect("/posts/%d"%post_id)
 
 
+class PostComments(tornado.web.RequestHandler):
+    def post(self, post_id):
+        """ save post comment """
+        pid = int(post_id)
+        body = self.get_argument("body")
+        R.rpush("post:%d:comments"%pid, body)
+        reduce(map(body), post_id, "com")
+        self.redirect("/posts/%d"%pid)
+
+    def get(self, post_id):
+        self.post(post_id)
+
 class OnePost(tornado.web.RequestHandler):
     def get(self, id):
         """ render one post with comments tree"""
@@ -122,7 +133,9 @@ class OnePost(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(404, "File Not Found")
         body = R.get("post:%d:body"%post_id)
         tags = R.get("post:%d:tags"%post_id)
-        comments = list()
+        com_key = "post:%d:comments"%post_id
+        l = R.llen(com_key)
+        comments = R.lrange(com_key, 0, l-1)
         self.render("one_post.html", nl2br=nl2br, id=post_id, title=title, body=body, tags=tags, comments=comments)
 
 
@@ -159,48 +172,26 @@ class Search(tornado.web.RequestHandler):
     def get(self, expression):
         """ render search results """
         unquoted = unquote(expression)
-        expr1 = "idx:%s:posts"%unquoted
-        expr2 = "idx:%s:com"%unquoted
-        len1 = R.llen(expr1)
-        len2 = R.llen(expr2)
-        keys1 = R.lrange(expr1, 0, len1-1)
-        keys2 = R.lrange(expr2, 0, len2-1)
+        expr = "idx:%s:*"%unquoted
+        keys = R.keys(expr)
+        search_keys = list()
+        for k in keys:
+            if k not in search_keys:
+                search_keys.append(k)
         all_keys = list()
-        for k in keys1:
-            if k not in all_keys:
-                all_keys.append(k)
-        for k in keys2:
-            if k not in all_keys:
-                all_keys.append(k)
-        result = list()
-        for k in all_keys:
-            result.append({
-                "id": k,
-                "title": R.get("post:%s:title"%k),
-            })
+        for key in search_keys:
+            keylen = R.llen(key)
+            for pid in R.lrange(key, 0, keylen-1):
+                if pid not in all_keys:
+                    all_keys.append(pid)
+
+            result = list()
+            for k in all_keys:
+                result.append({
+                    "id": k,
+                    "title": R.get("post:%s:title"%k),
+                })
         self.render("search.html", items=result, expression=unquoted)
-
-
-class PostComments(tornado.web.RequestHandler):
-    def post(self, post_id):
-        """ save post comment """
-        body = self.get_argument("body")
-        parent_id = self.get_argument("parent_id", None)
-
-        while True:
-            try:
-                comment_id = R.incr("last_comment_id")
-                if not post_id:
-                    raise Exception("not an ID")
-                break
-            except Exception, e:
-                pass
-        
-        R.set("com:%d:post"%comment_id, post_id)
-        R.set("com:%d:parent"%comment_id, parent_id)
-        R.set("com:%d:body"%comment_id, body)
-        reduce(map(body), post_id, "com")
-        self.redirect("/posts/%d"%id)
 
 
 class NotImplementedYet(Exception):
