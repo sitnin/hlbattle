@@ -72,7 +72,8 @@ class Posts(tornado.web.RequestHandler):
                         "title": title,
                         "tags": tags,
                     })
-            self.render("posts.html", page=page, items=posts, last_page=last_page)
+            # self.render("posts.html", page=page, items=posts, last_page=last_page)
+            self.render("posts.html", items=posts)
         else:
             self.write("There is no posts")
 

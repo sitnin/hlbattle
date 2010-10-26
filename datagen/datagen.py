@@ -82,4 +82,4 @@ def print_result(res, logfile):
 if __name__ == "__main__":
     volume = int(sys.argv[1])
     logfile = sys.argv[2]
-    print_result(run(volume, load_data("data/"), "hl.local"), logfile)
+    print_result(run(volume, load_data("data/")), logfile)
