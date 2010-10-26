@@ -1,0 +1,17 @@
+{% extends "master.html" %}
+
+{% block title %}Posts, HLBattle{% end %}
+
+{% block body %}
+    <h1>Page {{page}}</h1>
+    <ul>
+        {% for i in items %}
+            {% if i["id"] != None %}
+                <li><a href="/posts/{{i["id"]}}">{{i["title"]}}</a></li>
+            {% end %}
+        {% end %}
+    </ul>
+    Pages: {% for x in xrange(1, last_page+1)%}
+    <a href="/posts/page/{{x}}">{{x}}</a>
+    {% end %}
+{% end %}

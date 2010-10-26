@@ -1,0 +1,19 @@
+{% extends "master.html" %}
+
+{% block title %}Post {{id}}, HLBattle{% end %}
+
+{% block body %}
+    <h1>{{title}}</h1>
+    <div class="post">
+        <div class="body">{{nl2br(body)}}</div>
+        <div class="tags">Tags: {{tags}}</div>
+    </div>
+    <h2>Comments</h2>
+    {% if comments %}
+        {% for i in comments %}
+            <div class="comment">{{i}}</div>
+        {% end %}
+    {% else %}
+        <div>There is no comments at the moment</div>
+    {% end %}
+{% end %}

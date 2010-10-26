@@ -1,0 +1,12 @@
+{% extends "master.html" %}
+
+{% block title %}Search result, HLBattle{% end %}
+
+{% block body %}
+    <h1>All tags</h1>
+    <ul>
+        {% for i in items %}
+            <li><a href="/tags/{{i}}">{{i}}</a></li>
+        {% end %}
+    </ul>
+{% end %}
