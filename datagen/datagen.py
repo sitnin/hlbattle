@@ -63,7 +63,7 @@ def run(count, data, target_host="188.127.230.23"):
             "data": resp_data,
         })
         if (x+1)%(count/10) == 0:
-            print x
+            print x+1
     end = datetime.datetime.now()
     return (start, end, log)
     

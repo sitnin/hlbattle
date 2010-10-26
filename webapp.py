@@ -38,9 +38,6 @@ def reduce(mapped_words, index, what="posts"):
     sorted_word2count = sorted(word2count.items(), key=itemgetter(0))
     for word, count in sorted_word2count:
         key = "idx:%s:%s"%(word, what)
-        # l = R.llen(key)
-        # idx = R.lrange(key, 0, l-1)
-        # if not index in idx:
         R.rpush(key, index)
 
 
@@ -99,7 +96,16 @@ class Posts(tornado.web.RequestHandler):
         R.set("post:%d:title"%post_id, title)
         R.set("post:%d:body"%post_id, body)
         R.set("post:%d:tags"%post_id, tags)
+        
+        tags_list = list()
+        for t in tags.split(","):
+            tags_list.append(t.strip().lower())
+        for t in tags_list:
+            R.rpush("tag:%s"%t, post_id)
+            R.rpush("post:%d:taglist"%post_id, t)
+
         reduce(map(title+"\n"+body), post_id)
+
         self.redirect("/posts/%d"%post_id)
 
 
@@ -121,22 +127,58 @@ class OnePost(tornado.web.RequestHandler):
 
 
 class Tags(tornado.web.RequestHandler):
-    def get(self, id):
+    def get(self):
         """ render tag cloud """
-        raise NotImplementedYet()
+        keys = R.keys("tag:*")
+        tags_list = list()
+        for t in keys:
+            tags_list.append(t[4:])
+        self.render("tags.html", items=tags_list)
 
 
 class OneTag(tornado.web.RequestHandler):
-    def get(self, id):
+    def get(self, tag):
         """ render posts list by tag """
-        raise NotImplementedYet()
+        key = "tag:%s"%tag
+        l = R.llen(key)
+        post_ids = list()
+        for i in R.lrange(key, 0, l-1):
+            ii = int(i)
+            if ii not in post_ids:
+                post_ids.append(int(ii))
+        posts = list()
+        for i in post_ids:
+            posts.append({
+                "id": i,
+                "title": R.get("post:%d:title"%i)
+            })
+        self.render("one_tag.html", items=posts, tag=tag)
 
 
 class Search(tornado.web.RequestHandler):
     def get(self, expression):
         """ render search results """
         unquoted = unquote(expression)
-        raise NotImplementedYet()
+        expr1 = "idx:%s:posts"%unquoted
+        expr2 = "idx:%s:com"%unquoted
+        len1 = R.llen(expr1)
+        len2 = R.llen(expr2)
+        keys1 = R.lrange(expr1, 0, len1-1)
+        keys2 = R.lrange(expr2, 0, len2-1)
+        all_keys = list()
+        for k in keys1:
+            if k not in all_keys:
+                all_keys.append(k)
+        for k in keys2:
+            if k not in all_keys:
+                all_keys.append(k)
+        result = list()
+        for k in all_keys:
+            result.append({
+                "id": k,
+                "title": R.get("post:%s:title"%k),
+            })
+        self.render("search.html", items=result, expression=unquoted)
 
 
 class PostComments(tornado.web.RequestHandler):
@@ -157,7 +199,7 @@ class PostComments(tornado.web.RequestHandler):
         R.set("com:%d:post"%comment_id, post_id)
         R.set("com:%d:parent"%comment_id, parent_id)
         R.set("com:%d:body"%comment_id, body)
-        reduce(map(body), comment_id, "com")
+        reduce(map(body), post_id, "com")
         self.redirect("/posts/%d"%id)
 
 
@@ -172,7 +214,7 @@ application = tornado.web.Application([
     (r"/posts/([0-9]+)", OnePost),
     (r"/posts/([0-9]+)/comments", PostComments),
     (r"/tags", Tags),
-    (r"/tags/([0-9]+)", OneTag),
+    (r"/tags/(.+)", OneTag),
     (r"/search/(.+)", Search),
 ], debug=config.debug, template_path=os.path.join(os.path.dirname(__file__), 'templates'))
 
